@@ -36,11 +36,15 @@ class Snappable extends StatefulWidget {
   /// Function that gets called when snap ends
   final VoidCallback onSnapped;
 
+  /// Delay before the snap effect starts
+  final Duration delay;
+
   const Snappable({
     Key? key,
     required this.child,
     this.offset = const Offset(64, -32),
     this.duration = const Duration(milliseconds: 5000),
+    this.delay = const Duration(milliseconds: 100),
     this.randomDislocationOffset = const Offset(64, 32),
     this.numberOfBuckets = 16,
     this.snapOnTap = false,
@@ -162,7 +166,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     });
 
     //give a short delay to draw images
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(widget.delay);
 
     //start the snap!
     _animationController.forward();
