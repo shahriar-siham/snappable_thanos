@@ -122,7 +122,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     //create an image for every bucket
     List<img.Image> images = List<img.Image>.generate(
       widget.numberOfBuckets,
-      (i) => img.Image(width: fullImage.width, height: fullImage.height),
+      (i) => img.Image(width: fullImage.width, height: fullImage.height, numChannels: 4),
     );
 
     //for every line of pixels
