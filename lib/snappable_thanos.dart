@@ -6,7 +6,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:image/image.dart' as image;
+import 'package:image/image.dart' as img;
 
 class Snappable extends StatefulWidget {
   /// Widget to be snapped
@@ -120,9 +120,9 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     final fullImage = await _getImageFromWidget();
 
     //create an image for every bucket
-    List<image.Image> images = List<image.Image>.generate(
+    List<img.Image> images = List<img.Image>.generate(
       widget.numberOfBuckets,
-      (i) => image.Image(fullImage.width, fullImage.height),
+      (i) => img.Image(width: fullImage.width, height: fullImage.height),
     );
 
     //for every line of pixels
@@ -141,7 +141,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       //for every pixel in a line
       for (int x = 0; x < fullImage.width; x++) {
         //get the pixel from fullImage
-        int pixel = fullImage.getPixel(x, y);
+        var pixel = fullImage.getPixel(x, y);
         //choose a bucket for a pixel
         int imageIndex = _pickABucket(weights, sumOfWeights);
         //set the pixel from chosen bucket
@@ -151,7 +151,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
 
     //* compute allows us to run _encodeImages in separate isolate
     //* as it's too slow to work on the main thread
-    _layers = await compute<List<image.Image>, List<Uint8List>>(_encodeImages, images);
+    _layers = await compute<List<img.Image>, List<Uint8List>>(_encodeImages, images);
 
     //prepare random dislocations and set state
     setState(() {
@@ -222,33 +222,32 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   /// Returns index of a randomly chosen bucket
   int _pickABucket(List<int> weights, int sumOfWeights) {
     int rnd = math.Random().nextInt(sumOfWeights);
-    int chosenImage = 0;
-    for (int i = 0; i < widget.numberOfBuckets; i++) {
+    for (int i = 0; i < weights.length; i++) {
       if (rnd < weights[i]) {
-        chosenImage = i;
-        break;
+        return i;
       }
       rnd -= weights[i];
     }
-    return chosenImage;
+    return 0; // default bucket
   }
 
   /// Gets an Image from a [child] and caches [size] for later us
-  Future<image.Image> _getImageFromWidget() async {
-    RenderRepaintBoundary? boundary = _globalKey.currentContext?.findRenderObject() as RenderRepaintBoundary;
+  Future<img.Image> _getImageFromWidget() async {
+    RenderRepaintBoundary? boundary = _globalKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) return img.Image(width: 0, height: 0);
     //cache image for later
     size = boundary.size;
-    var img = await boundary.toImage();
-    ByteData? byteData = await img.toByteData(format: ImageByteFormat.png);
+    var uiImage = await boundary.toImage();
+    ByteData? byteData = await uiImage.toByteData(format: ImageByteFormat.png);
     var pngBytes = byteData?.buffer.asUint8List();
 
-    return image.decodeImage(pngBytes!)!;
+    return img.decodePng(pngBytes!)!;
   }
 
   int _gauss(double center, double value) => (1000 * math.exp(-(math.pow((value - center), 2) / 0.14))).round();
 }
 
 /// This is slow! Run it in separate isolate
-List<Uint8List> _encodeImages(List<image.Image> images) {
-  return images.map((img) => Uint8List.fromList(image.encodePng(img))).toList();
-}
+List<Uint8List> _encodeImages(List<img.Image> images) {
+    return images.map((image) => Uint8List.fromList(img.encodePng(image))).toList();
+  }
