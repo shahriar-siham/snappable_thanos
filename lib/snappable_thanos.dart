@@ -194,8 +194,6 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
         _isPrepared = true;
       });
 
-      // Give a short delay to draw images
-      await Future.delayed(const Duration(milliseconds: 10));
     } finally {
       _preparationCompleter?.complete();
       _preparationCompleter = null;
@@ -280,7 +278,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     if (boundary == null) return img.Image(width: 0, height: 0);
     // Cache image for later
     size = boundary.size;
-    var uiImage = await boundary.toImage(pixelRatio: pixelRatio);
+    var uiImage = await boundary.toImage(pixelRatio: widget.pixelRatio);
     ByteData? byteData = await uiImage.toByteData(format: ImageByteFormat.png);
     var pngBytes = byteData?.buffer.asUint8List();
 
