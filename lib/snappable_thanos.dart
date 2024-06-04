@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image/image.dart' as img;
+import 'dart:async';
 
 class Snappable extends StatefulWidget {
   /// Widget to be snapped
@@ -85,7 +86,9 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   /// Size of child widget
   late Size size;
 
-  /// Preparation flag
+  /// Completer to track the preparation status
+  Completer<void>? _preparationCompleter;
+  
   bool _isPrepared = false;
 
   @override
@@ -123,22 +126,82 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
               key: _globalKey,
               child: widget.child,
             ),
-          ),
+          )
         ],
       ),
     );
   }
 
   /// I am... INEVITABLE      ~Thanos
+  Future<void> prepareSnap() async {
+    if (_preparationCompleter != null) {
+      // If preparation is already in progress, wait for it to complete
+      await _preparationCompleter!.future;
+      return;
+    }
+
+    _preparationCompleter = Completer<void>();
+
+    try {
+      // Get image from child
+      final fullImage = await _getImageFromWidget();
+
+      // Create an image for every bucket
+      List<img.Image> images = List<img.Image>.generate(
+        widget.numberOfBuckets,
+        (i) => img.Image(width: fullImage.width, height: fullImage.height, numChannels: 4),
+      );
+
+      // For every line of pixels, skipping defined number of pixels (lines)
+      for (int y = 0; y < fullImage.height; y += widget.skipPixels + 1) {
+        // Generate weight list of probabilities determining
+        // to which bucket should given pixels go
+        List<int> weights = List.generate(
+          widget.numberOfBuckets,
+          (bucket) => _gauss(
+            y / fullImage.height,
+            bucket / widget.numberOfBuckets,
+          ),
+        );
+        int sumOfWeights = weights.fold(0, (sum, el) => sum + el);
+
+        // For every pixel in a line, skipping defined number of pixels
+        for (int x = 0; x < fullImage.width; x += widget.skipPixels + 1) {
+          // Get the pixel from fullImage
+          var pixel = fullImage.getPixel(x, y);
+          // Choose a bucket for a pixel
+          int imageIndex = _pickABucket(weights, sumOfWeights);
+          // Set the pixel from chosen bucket
+          images[imageIndex].setPixel(x, y, pixel);
+        }
+      }
+
+      // Compute allows us to run _encodeImages in separate isolate
+      // as it's too slow to work on the main thread
+      _layers = await compute(_encodeImages, [images, widget.pngLevel, widget.pngFilter]);
+
+      // Prepare random dislocations and set state
+      setState(() {
+        _randoms = List.generate(
+          widget.numberOfBuckets,
+          (i) => (math.Random().nextDouble() - 0.5) * 2,
+        );
+        _isPrepared = true;
+      });
+
+      // Give a short delay to draw images
+      await Future.delayed(const Duration(milliseconds: 10));
+    } finally {
+      _preparationCompleter?.complete();
+      _preparationCompleter = null;
+    }
+  }
+
   Future<void> snap() async {
     if (!_isPrepared) {
       await prepareSnap();
     }
-
-    // Give a short delay to draw images
-    await Future.delayed(const Duration(milliseconds: 10));
-
-    // Start the snap!
+    // Start the snap animation
     _animationController.forward();
   }
 
@@ -146,57 +209,8 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   void reset() {
     setState(() {
       _layers = [];
-      _isPrepared = false;
       _animationController.reset();
-    });
-  }
-
-  Future<void> prepareSnap() async {
-    // Get image from child
-    final fullImage = await _getImageFromWidget();
-
-    // Create an image for every bucket
-    List<img.Image> images = List<img.Image>.generate(
-      widget.numberOfBuckets,
-      (i) => img.Image(width: fullImage.width, height: fullImage.height, numChannels: 4),
-    );
-
-    // For every line of pixels, skipping the defined number of pixels (lines)
-    for (int y = 0; y < fullImage.height; y += widget.skipPixels + 1) {
-      // Generate weight list of probabilities determining
-      // to which bucket should given pixels go
-      List<int> weights = List.generate(
-        widget.numberOfBuckets,
-        (bucket) => _gauss(
-          y / fullImage.height,
-          bucket / widget.numberOfBuckets,
-        ),
-      );
-      int sumOfWeights = weights.fold(0, (sum, el) => sum + el);
-
-      // For every pixel in a line, skipping the defined number of pixels
-      for (int x = 0; x < fullImage.width; x += widget.skipPixels + 1) {
-        // Get the pixel from fullImage
-        var pixel = fullImage.getPixel(x, y);
-        // Choose a bucket for a pixel
-        int imageIndex = _pickABucket(weights, sumOfWeights);
-        // Set the pixel from chosen bucket
-        images[imageIndex].setPixel(x, y, pixel);
-      }
-    }
-
-    // Compute allows us to run _encodeImages in a separate isolate
-    // as it's too slow to work on the main thread
-    _layers = await compute(_encodeImages, [images, widget.pngLevel, widget.pngFilter]);
-
-    // Prepare random dislocations
-    _randoms = List.generate(
-      widget.numberOfBuckets,
-      (i) => (math.Random().nextDouble() - 0.5) * 2,
-    );
-
-    setState(() {
-      _isPrepared = true;
+      _isPrepared = false;
     });
   }
 
@@ -276,6 +290,6 @@ List<Uint8List> _encodeImages(List<dynamic> params) {
   List<img.Image> images = params[0];
   int level = params[1];
   img.PngFilter filter = params[2];
-
+  
   return images.map((image) => Uint8List.fromList(img.encodePng(image, level: level, filter: filter))).toList();
 }
