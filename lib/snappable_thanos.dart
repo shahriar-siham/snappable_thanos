@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image/image.dart' as img;
+import 'dart:async';
 
 class Snappable extends StatefulWidget {
   /// Widget to be snapped
@@ -85,6 +86,11 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   /// Size of child widget
   late Size size;
 
+  /// Completer to track the preparation status
+  Completer<void>? _preparationCompleter;
+  
+  bool _isPrepared = false;
+
   @override
   void initState() {
     super.initState();
@@ -110,7 +116,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       onTap: widget.snapOnTap ? () => isGone ? reset() : snap() : null,
       child: Stack(
         children: <Widget>[
-          if (_layers != []) ..._layers.map(_imageToWidget),
+          if (_layers.isNotEmpty) ..._layers.map(_imageToWidget),
           AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
@@ -127,56 +133,75 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   }
 
   /// I am... INEVITABLE      ~Thanos
-  Future<void> snap() async {
-    //get image from child
-    final fullImage = await _getImageFromWidget();
+  Future<void> prepareSnap() async {
+    if (_preparationCompleter != null) {
+      // If preparation is already in progress, wait for it to complete
+      await _preparationCompleter!.future;
+      return;
+    }
 
-    //create an image for every bucket
-    List<img.Image> images = List<img.Image>.generate(
-      widget.numberOfBuckets,
-      (i) => img.Image(width: fullImage.width, height: fullImage.height, numChannels: 4),
-    );
+    _preparationCompleter = Completer<void>();
 
-    //for every line of pixels, skipping defined number of pixels (lines)
-    for (int y = 0; y < fullImage.height; y+= widget.skipPixels + 1) {
-      //generate weight list of probabilities determining
-      //to which bucket should given pixels go
-      List<int> weights = List.generate(
+    try {
+      // Get image from child
+      final fullImage = await _getImageFromWidget();
+
+      // Create an image for every bucket
+      List<img.Image> images = List<img.Image>.generate(
         widget.numberOfBuckets,
-        (bucket) => _gauss(
-          y / fullImage.height,
-          bucket / widget.numberOfBuckets,
-        ),
+        (i) => img.Image(width: fullImage.width, height: fullImage.height, numChannels: 4),
       );
-      int sumOfWeights = weights.fold(0, (sum, el) => sum + el);
 
-      //for every pixel in a line, skipping defined number of pixels
-      for (int x = 0; x < fullImage.width; x += widget.skipPixels + 1) {
-      // get the pixel from fullImage
-      var pixel = fullImage.getPixel(x, y);
-      // choose a bucket for a pixel
-      int imageIndex = _pickABucket(weights, sumOfWeights);
-      // set the pixel from chosen bucket
-      images[imageIndex].setPixel(x, y, pixel);
+      // For every line of pixels, skipping defined number of pixels (lines)
+      for (int y = 0; y < fullImage.height; y += widget.skipPixels + 1) {
+        // Generate weight list of probabilities determining
+        // to which bucket should given pixels go
+        List<int> weights = List.generate(
+          widget.numberOfBuckets,
+          (bucket) => _gauss(
+            y / fullImage.height,
+            bucket / widget.numberOfBuckets,
+          ),
+        );
+        int sumOfWeights = weights.fold(0, (sum, el) => sum + el);
+
+        // For every pixel in a line, skipping defined number of pixels
+        for (int x = 0; x < fullImage.width; x += widget.skipPixels + 1) {
+          // Get the pixel from fullImage
+          var pixel = fullImage.getPixel(x, y);
+          // Choose a bucket for a pixel
+          int imageIndex = _pickABucket(weights, sumOfWeights);
+          // Set the pixel from chosen bucket
+          images[imageIndex].setPixel(x, y, pixel);
+        }
+      }
+
+      // Compute allows us to run _encodeImages in separate isolate
+      // as it's too slow to work on the main thread
+      _layers = await compute(_encodeImages, [images, widget.pngLevel, widget.pngFilter]);
+
+      // Prepare random dislocations and set state
+      setState(() {
+        _randoms = List.generate(
+          widget.numberOfBuckets,
+          (i) => (math.Random().nextDouble() - 0.5) * 2,
+        );
+        _isPrepared = true;
+      });
+
+      // Give a short delay to draw images
+      await Future.delayed(const Duration(milliseconds: 10));
+    } finally {
+      _preparationCompleter?.complete();
+      _preparationCompleter = null;
     }
   }
 
-    //* compute allows us to run _encodeImages in separate isolate
-    //* as it's too slow to work on the main thread
-    _layers = await compute(_encodeImages, [images, widget.pngLevel, widget.pngFilter]);
-
-    //prepare random dislocations and set state
-    setState(() {
-      _randoms = List.generate(
-        widget.numberOfBuckets,
-        (i) => (math.Random().nextDouble() - 0.5) * 2,
-      );
-    });
-
-    //give a short delay to draw images
-    await Future.delayed(const Duration(milliseconds: 10));
-
-    //start the snap!
+  Future<void> snap() async {
+    if (!_isPrepared) {
+      await prepareSnap();
+    }
+    // Start the snap animation
     _animationController.forward();
   }
 
@@ -185,18 +210,19 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     setState(() {
       _layers = [];
       _animationController.reset();
+      _isPrepared = false;
     });
   }
 
   Widget _imageToWidget(Uint8List layer) {
-    //get layer's index in the list
+    // Get layer's index in the list
     int index = _layers.indexOf(layer);
 
-    //based on index, calculate when this layer should start and end
+    // Based on index, calculate when this layer should start and end
     double animationStart = (index / _layers.length) * _lastLayerAnimationStart;
     double animationEnd = animationStart + _singleLayerAnimationLength;
 
-    //create interval animation using only part of whole animation
+    // Create interval animation using only part of whole animation
     CurvedAnimation animation = CurvedAnimation(
       parent: _animationController,
       curve: Interval(
@@ -247,7 +273,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   Future<img.Image> _getImageFromWidget() async {
     RenderRepaintBoundary? boundary = _globalKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) return img.Image(width: 0, height: 0);
-    //cache image for later
+    // Cache image for later
     size = boundary.size;
     var uiImage = await boundary.toImage();
     ByteData? byteData = await uiImage.toByteData(format: ImageByteFormat.png);
