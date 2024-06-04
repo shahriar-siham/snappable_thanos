@@ -85,6 +85,9 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   /// Size of child widget
   late Size size;
 
+  /// Preparation flag
+  bool _isPrepared = false;
+
   @override
   void initState() {
     super.initState();
@@ -110,7 +113,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       onTap: widget.snapOnTap ? () => isGone ? reset() : snap() : null,
       child: Stack(
         children: <Widget>[
-          if (_layers != []) ..._layers.map(_imageToWidget),
+          if (_layers.isNotEmpty) ..._layers.map(_imageToWidget),
           AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
@@ -120,7 +123,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
               key: _globalKey,
               child: widget.child,
             ),
-          )
+          ),
         ],
       ),
     );
@@ -128,19 +131,40 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
 
   /// I am... INEVITABLE      ~Thanos
   Future<void> snap() async {
-    //get image from child
+    if (!_isPrepared) {
+      await prepareSnap();
+    }
+
+    // Give a short delay to draw images
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    // Start the snap!
+    _animationController.forward();
+  }
+
+  /// I am... IRON MAN   ~Tony Stark
+  void reset() {
+    setState(() {
+      _layers = [];
+      _isPrepared = false;
+      _animationController.reset();
+    });
+  }
+
+  Future<void> prepareSnap() async {
+    // Get image from child
     final fullImage = await _getImageFromWidget();
 
-    //create an image for every bucket
+    // Create an image for every bucket
     List<img.Image> images = List<img.Image>.generate(
       widget.numberOfBuckets,
       (i) => img.Image(width: fullImage.width, height: fullImage.height, numChannels: 4),
     );
 
-    //for every line of pixels, skipping defined number of pixels (lines)
-    for (int y = 0; y < fullImage.height; y+= widget.skipPixels + 1) {
-      //generate weight list of probabilities determining
-      //to which bucket should given pixels go
+    // For every line of pixels, skipping the defined number of pixels (lines)
+    for (int y = 0; y < fullImage.height; y += widget.skipPixels + 1) {
+      // Generate weight list of probabilities determining
+      // to which bucket should given pixels go
       List<int> weights = List.generate(
         widget.numberOfBuckets,
         (bucket) => _gauss(
@@ -150,53 +174,41 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       );
       int sumOfWeights = weights.fold(0, (sum, el) => sum + el);
 
-      //for every pixel in a line, skipping defined number of pixels
+      // For every pixel in a line, skipping the defined number of pixels
       for (int x = 0; x < fullImage.width; x += widget.skipPixels + 1) {
-      // get the pixel from fullImage
-      var pixel = fullImage.getPixel(x, y);
-      // choose a bucket for a pixel
-      int imageIndex = _pickABucket(weights, sumOfWeights);
-      // set the pixel from chosen bucket
-      images[imageIndex].setPixel(x, y, pixel);
+        // Get the pixel from fullImage
+        var pixel = fullImage.getPixel(x, y);
+        // Choose a bucket for a pixel
+        int imageIndex = _pickABucket(weights, sumOfWeights);
+        // Set the pixel from chosen bucket
+        images[imageIndex].setPixel(x, y, pixel);
+      }
     }
-  }
 
-    //* compute allows us to run _encodeImages in separate isolate
-    //* as it's too slow to work on the main thread
+    // Compute allows us to run _encodeImages in a separate isolate
+    // as it's too slow to work on the main thread
     _layers = await compute(_encodeImages, [images, widget.pngLevel, widget.pngFilter]);
 
-    //prepare random dislocations and set state
+    // Prepare random dislocations
+    _randoms = List.generate(
+      widget.numberOfBuckets,
+      (i) => (math.Random().nextDouble() - 0.5) * 2,
+    );
+
     setState(() {
-      _randoms = List.generate(
-        widget.numberOfBuckets,
-        (i) => (math.Random().nextDouble() - 0.5) * 2,
-      );
-    });
-
-    //give a short delay to draw images
-    await Future.delayed(const Duration(milliseconds: 10));
-
-    //start the snap!
-    _animationController.forward();
-  }
-
-  /// I am... IRON MAN   ~Tony Stark
-  void reset() {
-    setState(() {
-      _layers = [];
-      _animationController.reset();
+      _isPrepared = true;
     });
   }
 
   Widget _imageToWidget(Uint8List layer) {
-    //get layer's index in the list
+    // Get layer's index in the list
     int index = _layers.indexOf(layer);
 
-    //based on index, calculate when this layer should start and end
+    // Based on index, calculate when this layer should start and end
     double animationStart = (index / _layers.length) * _lastLayerAnimationStart;
     double animationEnd = animationStart + _singleLayerAnimationLength;
 
-    //create interval animation using only part of whole animation
+    // Create interval animation using only part of whole animation
     CurvedAnimation animation = CurvedAnimation(
       parent: _animationController,
       curve: Interval(
@@ -247,7 +259,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   Future<img.Image> _getImageFromWidget() async {
     RenderRepaintBoundary? boundary = _globalKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) return img.Image(width: 0, height: 0);
-    //cache image for later
+    // Cache image for later
     size = boundary.size;
     var uiImage = await boundary.toImage();
     ByteData? byteData = await uiImage.toByteData(format: ImageByteFormat.png);
@@ -264,6 +276,6 @@ List<Uint8List> _encodeImages(List<dynamic> params) {
   List<img.Image> images = params[0];
   int level = params[1];
   img.PngFilter filter = params[2];
-  
+
   return images.map((image) => Uint8List.fromList(img.encodePng(image, level: level, filter: filter))).toList();
 }
