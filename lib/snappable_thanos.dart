@@ -246,18 +246,21 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     ).animate(animation);
 
     return AnimatedBuilder(
-      animation: _animationController,
+    animation: _animationController,
+    child: Transform.scale(
+      scale: 1 / widget.pixelRatio,  // Scale up the image back to its original size
       child: Image.memory(layer),
-      builder: (context, child) {
-        return Transform.translate(
-          offset: offsetAnimation.value,
-          child: Opacity(
-            opacity: math.cos(animation.value * math.pi / 2),
-            child: child,
-          ),
-        );
-      },
-    );
+    ),
+    builder: (context, child) {
+      return Transform.translate(
+        offset: offsetAnimation.value,
+        child: Opacity(
+          opacity: math.cos(animation.value * math.pi / 2),
+          child: child,
+        ),
+      );
+    },
+  );
   }
 
   /// Returns index of a randomly chosen bucket
