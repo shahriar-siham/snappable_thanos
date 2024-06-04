@@ -28,6 +28,12 @@ class Snappable extends StatefulWidget {
   /// The more of them the better effect but the more heavy it is for CPU
   final int numberOfBuckets;
 
+  /// PNG encoding level (0-9)
+  final int pngLevel;
+
+  /// PNG filter type
+  final img.PngFilter pngFilter;
+
   /// Quick helper to snap widgets when touched
   /// If true wraps the widget in [GestureDetector] and starts [snap] when tapped
   /// Defaults to false
@@ -43,6 +49,8 @@ class Snappable extends StatefulWidget {
     this.duration = const Duration(milliseconds: 5000),
     this.randomDislocationOffset = const Offset(64, 32),
     this.numberOfBuckets = 16,
+    this.pngLevel = 6,
+    this.pngFilter = img.PngFilter.paeth,
     this.snapOnTap = false,
     required this.onSnapped,
   }) : super(key: key);
@@ -151,7 +159,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
 
     //* compute allows us to run _encodeImages in separate isolate
     //* as it's too slow to work on the main thread
-    _layers = await compute<List<img.Image>, List<Uint8List>>(_encodeImages, images);
+    _layers = await compute(_encodeImages, [images, widget.pngLevel, widget.pngFilter]);
 
     //prepare random dislocations and set state
     setState(() {
@@ -248,6 +256,10 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
 }
 
 /// This is slow! Run it in separate isolate
-List<Uint8List> _encodeImages(List<img.Image> images) {
-    return images.map((image) => Uint8List.fromList(img.encodePng(image))).toList();
-  }
+List<Uint8List> _encodeImages(List<dynamic> params) {
+  List<img.Image> images = params[0];
+  int level = params[1];
+  img.PngFilter filter = params[2];
+  
+  return images.map((image) => Uint8List.fromList(img.encodePng(image, level: level, filter: filter))).toList();
+}
