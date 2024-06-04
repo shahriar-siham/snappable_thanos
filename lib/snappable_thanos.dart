@@ -34,6 +34,9 @@ class Snappable extends StatefulWidget {
   /// PNG filter type
   final img.PngFilter pngFilter;
 
+  /// Number of pixels to skip
+  final int skipPixels;
+
   /// Quick helper to snap widgets when touched
   /// If true wraps the widget in [GestureDetector] and starts [snap] when tapped
   /// Defaults to false
@@ -50,7 +53,8 @@ class Snappable extends StatefulWidget {
     this.randomDislocationOffset = const Offset(64, 32),
     this.numberOfBuckets = 16,
     this.pngLevel = 6,
-    this.pngFilter = img.PngFilter.paeth,
+    this.pngFilter = img.PngFilter.none,
+    this.skipPixels = 0,
     this.snapOnTap = false,
     required this.onSnapped,
   }) : super(key: key);
@@ -133,8 +137,8 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       (i) => img.Image(width: fullImage.width, height: fullImage.height, numChannels: 4),
     );
 
-    //for every line of pixels
-    for (int y = 0; y < fullImage.height; y++) {
+    //for every line of pixels, skipping defined number of pixels (lines)
+    for (int y = 0; y < fullImage.height; y+= widget.skipPixels + 1) {
       //generate weight list of probabilities determining
       //to which bucket should given pixels go
       List<int> weights = List.generate(
@@ -146,16 +150,16 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       );
       int sumOfWeights = weights.fold(0, (sum, el) => sum + el);
 
-      //for every pixel in a line
-      for (int x = 0; x < fullImage.width; x++) {
-        //get the pixel from fullImage
-        var pixel = fullImage.getPixel(x, y);
-        //choose a bucket for a pixel
-        int imageIndex = _pickABucket(weights, sumOfWeights);
-        //set the pixel from chosen bucket
-        images[imageIndex].setPixel(x, y, pixel);
-      }
+      //for every pixel in a line, skipping defined number of pixels
+      for (int x = 0; x < fullImage.width; x += widget.skipPixels + 1) {
+      // get the pixel from fullImage
+      var pixel = fullImage.getPixel(x, y);
+      // choose a bucket for a pixel
+      int imageIndex = _pickABucket(weights, sumOfWeights);
+      // set the pixel from chosen bucket
+      images[imageIndex].setPixel(x, y, pixel);
     }
+  }
 
     //* compute allows us to run _encodeImages in separate isolate
     //* as it's too slow to work on the main thread
