@@ -218,37 +218,43 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   }
 
   Widget _imageToWidget(Uint8List layer) {
-    // Get layer's index in the list
-    int index = _layers.indexOf(layer);
+  // Get layer's index in the list
+  int index = _layers.indexOf(layer);
 
-    // Based on index, calculate when this layer should start and end
-    double animationStart = (index / _layers.length) * _lastLayerAnimationStart;
-    double animationEnd = animationStart + _singleLayerAnimationLength;
+  // Based on index, calculate when this layer should start and end
+  double animationStart = (index / _layers.length) * _lastLayerAnimationStart;
+  double animationEnd = animationStart + _singleLayerAnimationLength;
 
-    // Create interval animation using only part of whole animation
-    CurvedAnimation animation = CurvedAnimation(
-      parent: _animationController,
-      curve: Interval(
-        animationStart,
-        animationEnd,
-        curve: Curves.easeOut,
-      ),
-    );
+  // Create interval animation using only part of whole animation
+  CurvedAnimation animation = CurvedAnimation(
+    parent: _animationController,
+    curve: Interval(
+      animationStart,
+      animationEnd,
+      curve: Curves.easeOut,
+    ),
+  );
 
-    Offset randomOffset = widget.randomDislocationOffset.scale(
-      _randoms[index],
-      _randoms[index],
-    );
+  Offset randomOffset = widget.randomDislocationOffset.scale(
+    _randoms[index],
+    _randoms[index],
+  );
 
-    Animation<Offset> offsetAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: widget.offset + randomOffset,
-    ).animate(animation);
+  Animation<Offset> offsetAnimation = Tween<Offset>(
+    begin: Offset.zero,
+    end: widget.offset + randomOffset,
+  ).animate(animation);
 
-    return AnimatedBuilder(
+  return AnimatedBuilder(
     animation: _animationController,
-    child: Transform.scale(
-      scale: 1 / widget.pixelRatio,  // Scale up the image back to its original size
+    child: Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.identity()
+        ..translate(
+          -size.width / 2 * (1 - 1 / widget.pixelRatio),
+          -size.height / 2 * (1 - 1 / widget.pixelRatio),
+        )
+        ..scale(1 / widget.pixelRatio),
       child: Image.memory(layer),
     ),
     builder: (context, child) {
@@ -261,7 +267,8 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       );
     },
   );
-  }
+}
+
 
   /// Returns index of a randomly chosen bucket
   int _pickABucket(List<int> weights, int sumOfWeights) {
