@@ -58,7 +58,7 @@ class Snappable extends StatefulWidget {
     this.randomDislocationOffset = const Offset(64, 32),
     this.numberOfBuckets = 16,
     this.pixelRatio = 1.0,
-    this.pngLevel = 6,
+    this.pngLevel = 0,
     this.pngFilter = img.PngFilter.none,
     this.skipPixels = 0,
     this.snapOnTap = false,
@@ -194,6 +194,8 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
         _isPrepared = true;
       });
 
+      // Give a short delay to draw images
+      await Future.delayed(const Duration(milliseconds: 10));
     } finally {
       _preparationCompleter?.complete();
       _preparationCompleter = null;
@@ -218,57 +220,47 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   }
 
   Widget _imageToWidget(Uint8List layer) {
-  // Get layer's index in the list
-  int index = _layers.indexOf(layer);
+    // Get layer's index in the list
+    int index = _layers.indexOf(layer);
 
-  // Based on index, calculate when this layer should start and end
-  double animationStart = (index / _layers.length) * _lastLayerAnimationStart;
-  double animationEnd = animationStart + _singleLayerAnimationLength;
+    // Based on index, calculate when this layer should start and end
+    double animationStart = (index / _layers.length) * _lastLayerAnimationStart;
+    double animationEnd = animationStart + _singleLayerAnimationLength;
 
-  // Create interval animation using only part of whole animation
-  CurvedAnimation animation = CurvedAnimation(
-    parent: _animationController,
-    curve: Interval(
-      animationStart,
-      animationEnd,
-      curve: Curves.easeOut,
-    ),
-  );
+    // Create interval animation using only part of whole animation
+    CurvedAnimation animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Interval(
+        animationStart,
+        animationEnd,
+        curve: Curves.easeOut,
+      ),
+    );
 
-  Offset randomOffset = widget.randomDislocationOffset.scale(
-    _randoms[index],
-    _randoms[index],
-  );
+    Offset randomOffset = widget.randomDislocationOffset.scale(
+      _randoms[index],
+      _randoms[index],
+    );
 
-  Animation<Offset> offsetAnimation = Tween<Offset>(
-    begin: Offset.zero,
-    end: widget.offset + randomOffset,
-  ).animate(animation);
+    Animation<Offset> offsetAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: widget.offset + randomOffset,
+    ).animate(animation);
 
-  return AnimatedBuilder(
-    animation: _animationController,
-    child: Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.identity()
-        ..translate(
-          -size.width / 2 * (1 - 1 / widget.pixelRatio),
-          -size.height / 2 * (1 - 1 / widget.pixelRatio),
-        )
-        ..scale(1 / widget.pixelRatio),
-      child: Image.memory(layer),
-    ),
-    builder: (context, child) {
-      return Transform.translate(
-        offset: offsetAnimation.value,
-        child: Opacity(
-          opacity: math.cos(animation.value * math.pi / 2),
-          child: child,
-        ),
-      );
-    },
-  );
-}
-
+    return AnimatedBuilder(
+      animation: _animationController,
+      child: Image.memory(layer, scale: 1 / widget.pixelRatio),
+      builder: (context, child) {
+        return Transform.translate(
+          offset: offsetAnimation.value,
+          child: Opacity(
+            opacity: math.cos(animation.value * math.pi / 2),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
 
   /// Returns index of a randomly chosen bucket
   int _pickABucket(List<int> weights, int sumOfWeights) {
