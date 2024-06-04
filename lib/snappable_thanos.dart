@@ -29,6 +29,10 @@ class Snappable extends StatefulWidget {
   /// The more of them the better effect but the more heavy it is for CPU
   final int numberOfBuckets;
 
+  /// The [pixelRatio] describes the scale between the logical pixels and the size of the output image.
+  /// Specifying 1.0 (the default) will give you a 1:1 mapping between logical pixels and the output pixels in the image.
+  final double pixelRatio;
+
   /// PNG encoding level (0-9)
   final int pngLevel;
 
@@ -53,6 +57,7 @@ class Snappable extends StatefulWidget {
     this.duration = const Duration(milliseconds: 5000),
     this.randomDislocationOffset = const Offset(64, 32),
     this.numberOfBuckets = 16,
+    this.pixelRatio = 1.0,
     this.pngLevel = 6,
     this.pngFilter = img.PngFilter.none,
     this.skipPixels = 0,
@@ -275,7 +280,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     if (boundary == null) return img.Image(width: 0, height: 0);
     // Cache image for later
     size = boundary.size;
-    var uiImage = await boundary.toImage();
+    var uiImage = await boundary.toImage(pixelRatio: pixelRatio);
     ByteData? byteData = await uiImage.toByteData(format: ImageByteFormat.png);
     var pngBytes = byteData?.buffer.asUint8List();
 
