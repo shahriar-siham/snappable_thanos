@@ -174,7 +174,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     });
 
     //give a short delay to draw images
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 10));
 
     //start the snap!
     _animationController.forward();
