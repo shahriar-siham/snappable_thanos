@@ -9,6 +9,14 @@ import 'package:flutter/rendering.dart';
 import 'package:image/image.dart' as img;
 import 'dart:async';
 
+enum PngFilter {
+  none,
+  sub,
+  up,
+  average,
+  paeth,
+}
+
 class Snappable extends StatefulWidget {
   /// Widget to be snapped
   final Widget child;
@@ -20,44 +28,113 @@ class Snappable extends StatefulWidget {
   /// Duration of whole snap animation
   final Duration duration;
 
-  /// How much can particle be randomized,
-  /// For example if [offset] is (100, 100) and [randomDislocationOffset] is (10,10),
-  /// Each layer can be moved to maximum between 90 and 110.
-  final Offset randomDislocationOffset;
-
   /// Number of layers of images,
-  /// The more of them the better effect but the more heavy it is for CPU
+  /// The more of them the better effect but the heavier it is for the CPU
   final int numberOfBuckets;
 
-  /// PNG encoding level (0-9)
+  /// The [pixelRatio] affects the number of dust particles generated during the snap effect:
+  /// - A value of `1.0` (default) will generate dust particles equivalent to the number of pixels the image occupies on the screen.
+  /// - Values less than `1.0` (recommended) will result in fewer dust particles, reducing the visual density and computational load.
+  /// - Values greater than `1.0` will result in more dust particles, increasing the visual density and detail of the effect, but may also increase the computational load.
+  /// 
+  /// Example usage:
+  /// ```dart
+  /// Snappable(
+  ///   child: myWidget,
+  ///   pixelRatio: 0.25,
+  ///   onSnapped: () {
+  ///     // Do something after snap
+  ///   },
+  /// )
+  /// ```
+  final double pixelRatio;
+
+  /// Determines the appearance of the dust particles.
+  /// If true, the particles will have a pixelated look (default).
+  /// If false, the particles will appear smoother and blurry.
+  final bool pixelatedDust;
+
+  /// How much can particles be randomized,
+  /// For example if [offset] is (100, 100) and [randomDislocationOffset] is (10,10),
+  /// Each layer can be moved to a maximum between 90 and 110.
+  final Offset randomDislocationOffset;
+
+  /// Specifies the compression level to be used when encoding the PNG image layers.
+  /// 
+  /// The compression level can range from 0 to 9:
+  /// - `0`: No compression (default). This is the fastest option and is suitable when encoding time is a priority.
+  /// - `1` to `9`: Increasing levels of compression. Higher values will result in smaller file sizes but take longer to encode.
+  /// 
+  /// The default value is `0` to minimize encoding time and ensure that the snapping effect performs efficiently.
+  /// Adjust this value based on your specific needs for file size and encoding speed.
+  /// 
+  /// Example usage:
+  /// ```dart
+  /// Snappable(
+  ///   child: myWidget,
+  ///   pngLevel: 6,
+  ///   onSnapped: () {
+  ///     // Do something after snap
+  ///   },
+  /// )
+  /// ```
+  /// 
+  /// Higher compression levels (closer to 9) provide better compression at the cost of slower performance.
+  /// Choose a compression level that balances your requirements for speed and file size.
   final int pngLevel;
 
-  /// PNG filter type
-  final img.PngFilter pngFilter;
+  /// Specifies the PNG filter type to be used when encoding the image layers.
+  /// 
+  /// The available options are:
+  /// - [PngFilter.none]: No filtering (default). This is the fastest option and reduces encoding time.
+  /// - [PngFilter.sub]: Subtracts the value of the pixel to the left. Slightly increases encoding time compared to no filter.
+  /// - [PngFilter.up]: Subtracts the value of the pixel above. Similar in performance to the Sub filter.
+  /// - [PngFilter.average]: Uses the average of the pixel to the left and the pixel above. Moderately increases encoding time.
+  /// - [PngFilter.paeth]: Uses the Paeth filter, which predicts the value of a pixel based on the neighbouring pixels. This is the most time-consuming option.
+  /// 
+  /// Example usage:
+  /// ```dart
+  /// Snappable(
+  ///   child: myWidget,
+  ///   pngFilter: PngFilter.paeth,
+  ///   onSnapped: () {
+  ///     // Do something after snap
+  ///   },
+  /// )
+  /// ```
+  /// 
+  /// Using a filter can affect the compression and quality of the generated PNG.
+  /// Choose a filter type based on your specific needs for quality, performance, and encoding time.
+  final PngFilter pngFilter;
 
-  /// Number of pixels to skip
+  /// By adjusting the [skipPixels] value, you can control the density of the dust particles:
+  /// - A value of `0` means no pixels are skipped, resulting in the maximum density of dust particles.
+  /// - Increasing the value will reduce the number of dust particles by skipping the specified number of pixels, which can improve performance.
+  /// For example, if the value is `1`, the dust particles will be generated from every other pixel.
   final int skipPixels;
 
   /// Quick helper to snap widgets when touched
-  /// If true wraps the widget in [GestureDetector] and starts [snap] when tapped
+  /// If true, wraps the widget in [GestureDetector] and starts [snap] when tapped
   /// Defaults to false
   final bool snapOnTap;
 
   /// Function that gets called when snap ends
-  final VoidCallback onSnapped;
+  final VoidCallback? onSnapped;
 
   const Snappable({
     Key? key,
     required this.child,
     this.offset = const Offset(64, -32),
-    this.duration = const Duration(milliseconds: 5000),
-    this.randomDislocationOffset = const Offset(64, 32),
+    this.duration = const Duration(milliseconds: 5000),    
     this.numberOfBuckets = 16,
-    this.pngLevel = 6,
-    this.pngFilter = img.PngFilter.none,
+    this.pixelRatio = 1.0,
+    this.pixelatedDust = true,
+    this.randomDislocationOffset = const Offset(64, 32),
+    this.pngLevel = 0,
+    this.pngFilter = PngFilter.none,
     this.skipPixels = 0,
     this.snapOnTap = false,
-    required this.onSnapped,
+    this.onSnapped,
   }) : super(key: key);
 
   @override
@@ -100,7 +177,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     );
 
     _animationController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) widget.onSnapped();
+      if (status == AnimationStatus.completed) widget.onSnapped?.call();
     });
   }
 
@@ -130,6 +207,23 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
         ],
       ),
     );
+  }
+
+  // Function to map PngFilter to img.PngFilter
+  img.PngFilter _mapPngFilter(PngFilter filter) {
+    switch (filter) {
+      case PngFilter.sub:
+        return img.PngFilter.sub;
+      case PngFilter.up:
+        return img.PngFilter.up;
+      case PngFilter.average:
+        return img.PngFilter.average;
+      case PngFilter.paeth:
+        return img.PngFilter.paeth;
+      case PngFilter.none:
+      default:
+        return img.PngFilter.none;
+    }
   }
 
   /// I am... INEVITABLE      ~Thanos
@@ -178,7 +272,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
 
       // Compute allows us to run _encodeImages in separate isolate
       // as it's too slow to work on the main thread
-      _layers = await compute(_encodeImages, [images, widget.pngLevel, widget.pngFilter]);
+      _layers = await compute(_encodeImages, [images, widget.pngLevel, _mapPngFilter(widget.pngFilter)]);
 
       // Prepare random dislocations and set state
       setState(() {
@@ -243,14 +337,18 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     ).animate(animation);
 
     return AnimatedBuilder(
-      animation: _animationController,
-      child: Image.memory(layer),
-      builder: (context, child) {
-        return Transform.translate(
-          offset: offsetAnimation.value,
-          child: Opacity(
-            opacity: math.cos(animation.value * math.pi / 2),
-            child: child,
+    animation: _animationController,
+    child: Image.memory(
+      layer,
+      scale: widget.pixelRatio,
+      filterQuality: widget.pixelatedDust ? FilterQuality.none : FilterQuality.low,
+    ),
+    builder: (context, child) {
+      return Transform.translate(
+        offset: offsetAnimation.value,
+        child: Opacity(
+          opacity: math.cos(animation.value * math.pi / 2),
+          child: child,
           ),
         );
       },
@@ -275,7 +373,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     if (boundary == null) return img.Image(width: 0, height: 0);
     // Cache image for later
     size = boundary.size;
-    var uiImage = await boundary.toImage();
+    var uiImage = await boundary.toImage(pixelRatio: widget.pixelRatio);
     ByteData? byteData = await uiImage.toByteData(format: ImageByteFormat.png);
     var pngBytes = byteData?.buffer.asUint8List();
 
