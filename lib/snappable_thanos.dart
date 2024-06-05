@@ -249,7 +249,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
 
     return AnimatedBuilder(
       animation: _animationController,
-      child: Image.memory(layer, scale: widget.pixelRatio),
+      child: Image.memory(layer, scale: widget.pixelRatio, filterQuality: FilterQuality.none),
       builder: (context, child) {
         return Transform.translate(
           offset: offsetAnimation.value,
