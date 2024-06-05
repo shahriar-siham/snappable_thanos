@@ -13,7 +13,7 @@ enum PngFilter {
   none,
   sub,
   up,
-  avg,
+  average,
   paeth,
 }
 
@@ -89,7 +89,7 @@ class Snappable extends StatefulWidget {
   /// - [PngFilter.none]: No filtering (default). This is the fastest option and reduces encoding time.
   /// - [PngFilter.sub]: Subtracts the value of the pixel to the left. Slightly increases encoding time compared to no filter.
   /// - [PngFilter.up]: Subtracts the value of the pixel above. Similar in performance to the Sub filter.
-  /// - [PngFilter.avg]: Uses the average of the pixel to the left and the pixel above. Moderately increases encoding time.
+  /// - [PngFilter.average]: Uses the average of the pixel to the left and the pixel above. Moderately increases encoding time.
   /// - [PngFilter.paeth]: Uses the Paeth filter, which predicts the value of a pixel based on the neighbouring pixels. This is the most time-consuming option.
   /// 
   /// Example usage:
@@ -107,7 +107,10 @@ class Snappable extends StatefulWidget {
   /// Choose a filter type based on your specific needs for quality, performance, and encoding time.
   final PngFilter pngFilter;
 
-  /// Number of pixels to skip
+  /// By adjusting the [skipPixels] value, you can control the density of the dust particles:
+  /// - A value of `0` means no pixels are skipped, resulting in the maximum density of dust particles.
+  /// - Increasing the value will reduce the number of dust particles by skipping the specified number of pixels, which can improve performance.
+  /// For example, if the value is `1`, the dust particles will be generated from every other pixel.
   final int skipPixels;
 
   /// Quick helper to snap widgets when touched
@@ -213,8 +216,8 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
         return img.PngFilter.sub;
       case PngFilter.up:
         return img.PngFilter.up;
-      case PngFilter.avg:
-        return img.PngFilter.avg;
+      case PngFilter.average:
+        return img.PngFilter.average;
       case PngFilter.paeth:
         return img.PngFilter.paeth;
       case PngFilter.none:
