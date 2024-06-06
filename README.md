@@ -7,7 +7,7 @@ A Flutter library that allows you to add the iconic "snap" effect from Thanos to
 #### What's New
 - **Updated for `image 4.2.0`**
 - Achieved faster performance by replacing the previous slow PNG encoding algorithm.
-- Introduced prepareSnap() method to perform calculations beforehand for instant snapping.
+- Introduced `prepareSnap()` method to perform calculations beforehand for instant snapping.
 - Added `pixelRatio` and `skipPixel` parameters to further enhance performance and offer stylistic options (see details below).
 
 ![Example 1](https://user-images.githubusercontent.com/16286046/62490322-51313680-b7c9-11e9-91f2-1363c292f544.gif)
