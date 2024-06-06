@@ -167,6 +167,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
   Completer<void>? _preparationCompleter;
   
   bool _isPrepared = false;
+  bool _hasSnapStarted = false;
 
   @override
   void initState() {
@@ -193,7 +194,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       onTap: widget.snapOnTap ? () => isGone ? reset() : snap() : null,
       child: Stack(
         children: <Widget>[
-          if (_layers.isNotEmpty) ..._layers.map(_imageToWidget),
+          if (_hasSnapStarted &&_layers.isNotEmpty) ..._layers.map(_imageToWidget),
           AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
@@ -295,6 +296,13 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     if (!_isPrepared) {
       await prepareSnap();
     }
+    setState(() {
+      _hasSnapStarted = true;
+    });
+
+    // Add a 10-millisecond delay before the snap animation starts
+    await Future.delayed(const Duration(milliseconds: 10));
+    
     // Start the snap animation
     _animationController.forward();
   }
@@ -305,6 +313,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       _layers = [];
       _animationController.reset();
       _isPrepared = false;
+      _hasSnapStarted = false;
     });
   }
 
