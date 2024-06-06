@@ -1,6 +1,6 @@
 <img src="https://em-content.zobj.net/source/microsoft-teams/363/hand-with-index-finger-and-thumb-crossed_1faf0.png" alt="Logo" width="100" height="100">
 
-# <img src="https://storage.googleapis.com/cms-storage-bucket/0dbfcc7a59cd1cf16282.png" alt="Flutter Logo" height="24"> snappable_thanos
+# snappable_thanos
 
 A Flutter library that allows you to add the iconic "snap" effect from Thanos to any widget in your Flutter app. With simple integration and various customization options, you can animate widgets disappearing and reappearing with ease.
 
