@@ -357,7 +357,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       layer,
       scale: widget.pixelRatio,
       filterQuality: widget.pixelatedDust ? FilterQuality.none : FilterQuality.low,
-      colorBlendMode: blendMode
+      colorBlendMode: widget.blendMode
     ),
     builder: (context, child) {
       return Transform.translate(
