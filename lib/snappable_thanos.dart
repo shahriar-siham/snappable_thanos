@@ -118,6 +118,11 @@ class Snappable extends StatefulWidget {
   /// Defaults to false
   final bool snapOnTap;
 
+  /// Specifies the blending mode for the original image. If the blending mode of the original image is changed, 
+  /// this setting will also apply to the particles to ensure consistency.
+  /// Defaults to `BlendMode.srcOver`, which corresponds to the normal blending mode in Photoshop.
+  final BlendMode blendMode;
+
   /// Function that gets called when snap ends
   final VoidCallback? onSnapped;
 
@@ -134,6 +139,7 @@ class Snappable extends StatefulWidget {
     this.pngFilter = PngFilter.none,
     this.skipPixels = 0,
     this.snapOnTap = false,
+    this.blendMode = BlendMode.srcOver,
     this.onSnapped,
   }) : super(key: key);
 
@@ -351,6 +357,7 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       layer,
       scale: widget.pixelRatio,
       filterQuality: widget.pixelatedDust ? FilterQuality.none : FilterQuality.low,
+      colorBlendMode: blendMode
     ),
     builder: (context, child) {
       return Transform.translate(
