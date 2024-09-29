@@ -130,7 +130,6 @@ You can customize the number of dust particles with the `pixelRatio` parameter. 
 
 You may want to reduce the number of particles while keeping their size the same. For this, the `skipPixels` parameter is introduced. Setting it to `1` will skip every other pixel, effectively reducing the pixel count by half.
 
-<br><br>
 ## Appearance of Particles
 
 The `pixelatedDust` parameter determines the appearance of the dust particles. If `true`, the particles will have a pixelated look (default). If `false`, the particles will appear smoother and blurry. The effect is more noticeable when the `pixelRatio` is less than `1.0`.
