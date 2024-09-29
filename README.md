@@ -15,7 +15,6 @@ A Flutter library that allows you to add the iconic "snap" effect from Thanos to
 ![Example 2](https://user-images.githubusercontent.com/16286046/62490326-52626380-b7c9-11e9-9ed3-5545e3175cb6.gif)
 ![Example 3](https://user-images.githubusercontent.com/16286046/62490340-5bebcb80-b7c9-11e9-8bcf-e94c18f25f1b.gif)
 
-<br><br>
 # Installing
 
 1. Add this to your `pubspec.yaml`
@@ -33,7 +32,6 @@ dependencies:
 import 'package:snappable_thanos/snappable_thanos.dart';
 ```
 
-<br><br>
 # Syntax
 
 First, wrap any widget with `Snappable`.
@@ -76,7 +74,6 @@ To undo the snap, use the following:
 key.currentState!.reset();
 ```
 
-<br><br>
 # Additional Syntax
 
 ## Preloading 
@@ -89,7 +86,6 @@ key.currentState!.prepareSnap();
 
 > **NOTE:** Using `prepareSnap()` is optional. You can skip the preparation and use `snap()` directly.
 
-<br><br>
 ## Snap on Tap
 
 You may want to snap a widget by just tapping on it. For this, set the `snapOntap` to `true`.
@@ -108,7 +104,6 @@ class MyWidget extends StatelessWidget {
 ```
  Undo by tapping again.
 
- <br><br>
  ## Optional Callback For When The Snap Ends
  
  ```dart
@@ -123,15 +118,12 @@ class MyWidget extends StatelessWidget {
    }
  }
  ```
-
-<br><br>
 # Customization
 
 ## Number of Layers
 
 The algorithm works by converting any widget into an image, randomly selecting pixels, and assigning them to different layers, called buckets. These buckets are then animated in random directions. The effect looks impressive when there are more buckets, but be sure to balance visual quality with performance.
 
-<br><br>
 ## Number of Particles
 
 You can customize the number of dust particles with the `pixelRatio` parameter. Fewer particles result in larger sizes and faster rendering. **The default value is `1.0`, but using a value less than that is recommended.**
