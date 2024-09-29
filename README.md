@@ -15,7 +15,7 @@ A Flutter library that allows you to add the iconic "snap" effect from Thanos to
 ![Example 2](https://user-images.githubusercontent.com/16286046/62490326-52626380-b7c9-11e9-9ed3-5545e3175cb6.gif)
 ![Example 3](https://user-images.githubusercontent.com/16286046/62490340-5bebcb80-b7c9-11e9-8bcf-e94c18f25f1b.gif)
 
-<br><br><br>
+<br><br>
 # Installing
 
 1. Add this to your `pubspec.yaml`
@@ -33,7 +33,7 @@ dependencies:
 import 'package:snappable_thanos/snappable_thanos.dart';
 ```
 
-<br><br><br>
+<br><br>
 # Syntax
 
 First, wrap any widget with `Snappable`.
@@ -76,7 +76,7 @@ To undo the snap, use the following:
 key.currentState!.reset();
 ```
 
-<br><br><br>
+<br><br>
 # Additional Syntax
 
 ## Preloading 
@@ -124,7 +124,7 @@ class MyWidget extends StatelessWidget {
  }
  ```
 
-<br><br><br>
+<br><br>
 # Customization
 
 ## Number of Layers
