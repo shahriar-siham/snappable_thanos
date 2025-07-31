@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:snappable_thanos/snappable_thanos.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: "Thanos's Snap Demo",
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        primarySwatch: Colors.deepPurple,
       ),
       home: const MyHomePage(),
     );
@@ -17,14 +20,14 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  const MyHomePage({super.key});
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final GlobalKey<SnappableState> _snappableKey = GlobalKey<SnappableState>();
+  final _snappableKey = GlobalKey<SnappableState>();
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +36,8 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text('Snap'),
       ),
       body: Column(
-        children: <Widget>[
+        children: [
+          // Snap Widget
           Snappable(
             key: _snappableKey,
             snapOnTap: true,
@@ -47,12 +51,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Text(
                   'This will be snapped',
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                        color: Colors.white,
-                      ),
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
           ),
+          // Control Button
           ElevatedButton(
             child: const Text('Snap / Reverse'),
             onPressed: () {
