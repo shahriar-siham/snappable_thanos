@@ -276,6 +276,8 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
       _layers = await compute(_encodeImages, [images, widget.pngLevel, _mapPngFilter(widget.pngFilter)]);
 
       // Prepare random dislocations and set state
+      if (!mounted) return;
+
       setState(() {
         _randoms = List.generate(
           widget.numberOfBuckets,
@@ -296,6 +298,9 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     if (!_isPrepared) {
       await prepareSnap();
     }
+
+    if (!mounted) return;
+
     setState(() {
       _hasSnapStarted = true;
     });
@@ -304,11 +309,15 @@ class SnappableState extends State<Snappable> with SingleTickerProviderStateMixi
     await Future.delayed(const Duration(milliseconds: 10));
     
     // Start the snap animation
-    _animationController.forward();
+    if (mounted) {
+      _animationController.forward();
+    }
   }
 
   /// I am... IRON MAN   ~Tony Stark
   void reset() {
+    if (!mounted) return;
+    
     setState(() {
       _layers = [];
       _animationController.reset();
